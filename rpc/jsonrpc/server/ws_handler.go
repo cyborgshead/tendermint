@@ -308,6 +308,10 @@ func (wsc *wsConnection) readRoutine() {
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
 			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCIntID(-1), err))
 			go wsc.readRoutine()
+		} else {
+			if err := wsc.baseConn.Close(); err != nil {
+				wsc.Logger.Error("Error closing connection", "err", err)
+			}
 		}
 	}()
 
@@ -395,6 +399,9 @@ func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer func() {
 		pingTicker.Stop()
+		if err := wsc.baseConn.Close(); err != nil {
+			wsc.Logger.Error("Error closing connection", "err", err)
+		}
 	}()
 
 	// https://github.com/gorilla/websocket/issues/97
@@ -422,6 +429,7 @@ func (wsc *wsConnection) writeRoutine() {
 			err := wsc.writeMessageWithDeadline(websocket.PingMessage, []byte{})
 			if err != nil {
 				wsc.Logger.Error("Failed to write ping", "err", err)
+				wsc.Stop()
 				return
 			}
 		case msg := <-wsc.writeChan:
@@ -430,6 +438,7 @@ func (wsc *wsConnection) writeRoutine() {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
 				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
+				wsc.Stop()
 				return
 			}
 		}
