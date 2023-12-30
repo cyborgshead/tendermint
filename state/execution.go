@@ -117,6 +117,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
 	err := validateBlock(state, block)
 	if err != nil {
+		panic(err)
 		return err
 	}
 	return blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
@@ -133,6 +134,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 ) (State, int64, error) {
 
 	if err := validateBlock(state, block); err != nil {
+		panic(err)
 		return state, 0, ErrInvalidBlock(err)
 	}
 
